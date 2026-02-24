@@ -1,0 +1,3 @@
+app/api/geocode/route.ts(89,14): error TS2448: Block-scoped variable 'location' used before its declaration.
+app/join/[code]/page.tsx(5,10): error TS2305: Module '"@/lib/storage"' has no exported member 'joinListByCode'.
+test-amap-service.ts(23,41): error TS18046: 'e' is of type 'unknown'.
