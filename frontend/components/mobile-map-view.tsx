@@ -67,10 +67,11 @@ export function MobileMapView({
   const amapRef = useRef<any>(null)
   const markersRef = useRef<any[]>([])
   const userMarkerRef = useRef<any>(null)
-  
+
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const chipScrollRef = useRef<HTMLDivElement>(null)
   const chipRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
+  const prevDisplayedRef = useRef<Restaurant[] | null>(null)
 
   // Scroll selected chip to center of the scroll container
   const scrollChipToCenter = useCallback((chipId: string) => {
@@ -117,22 +118,22 @@ export function MobileMapView({
 
     try {
       // @ts-ignore
-    const AMap = (window as any).AMap
-    amapRef.current = AMap
+      const AMap = (window as any).AMap
+      amapRef.current = AMap
 
-    const map = new AMap.Map(mapContainerRef.current, {
-      viewMode: "2D",
-      zoom: 13,
-      center: [116.16147, 23.30324], // Puning City center
-    })
+      const map = new AMap.Map(mapContainerRef.current, {
+        viewMode: "2D",
+        zoom: 13,
+        center: [116.16147, 23.30324], // Puning City center
+      })
 
-    // @ts-ignore
-    mapRef.current = map
+      // @ts-ignore
+      mapRef.current = map
 
-    // Ensure user marker is cleared on init
-    userMarkerRef.current = null
+      // Ensure user marker is cleared on init
+      userMarkerRef.current = null
 
-    map.plugin(["AMap.Scale", "AMap.ToolBar"], function () {
+      map.plugin(["AMap.Scale", "AMap.ToolBar"], function () {
         map.addControl(new AMap.Scale())
         map.addControl(new AMap.ToolBar({ position: "RB" }))
       })
@@ -168,120 +169,120 @@ export function MobileMapView({
         showCircle: true,
         panToLocation: true,
       })
-      
-      geolocation.getCurrentPosition(function(status: string, result: any) {
+
+      geolocation.getCurrentPosition(function (status: string, result: any) {
         setIsLocating(false)
-        if(status === 'complete'){
-            console.log('Located successfully', result)
-            
-            // 1. Add custom pulse marker
-            if (userMarkerRef.current) {
-                map.remove(userMarkerRef.current)
-            }
-            
-            const content = `
+        if (status === 'complete') {
+          console.log('Located successfully', result)
+
+          // 1. Add custom pulse marker
+          if (userMarkerRef.current) {
+            map.remove(userMarkerRef.current)
+          }
+
+          const content = `
                 <div class="user-location-marker">
                     <div class="user-location-pulse"></div>
                     <div class="user-location-dot"></div>
                 </div>
             `
-            
-            const marker = new AMap.Marker({
-                position: result.position,
-                content: content,
-                offset: new AMap.Pixel(-24, -24), // Center the 48x48 marker
-                zIndex: 100 // Ensure it's above other markers
+
+          const marker = new AMap.Marker({
+            position: result.position,
+            content: content,
+            offset: new AMap.Pixel(-24, -24), // Center the 48x48 marker
+            zIndex: 100 // Ensure it's above other markers
+          })
+
+          map.add(marker)
+          userMarkerRef.current = marker
+
+          // Calculate distance to nearest restaurant
+          let nearestDist = Infinity
+          let nearbyCount = 0
+          const userPos = result.position // AMap.LngLat
+
+          // Check if we have restaurants
+          if (markersRef.current && markersRef.current.length > 0) {
+            markersRef.current.forEach(marker => {
+              const markerPos = marker.getPosition()
+              const dist = userPos.distance(markerPos) // meters
+              if (dist < nearestDist) nearestDist = dist
+              if (dist < 10000) nearbyCount++ // within 10km
             })
-            
-            map.add(marker)
-            userMarkerRef.current = marker
 
-            // Calculate distance to nearest restaurant
-            let nearestDist = Infinity
-            let nearbyCount = 0
-            const userPos = result.position // AMap.LngLat
-            
-            // Check if we have restaurants
-            if (markersRef.current && markersRef.current.length > 0) {
-              markersRef.current.forEach(marker => {
-                const markerPos = marker.getPosition()
-                const dist = userPos.distance(markerPos) // meters
-                if (dist < nearestDist) nearestDist = dist
-                if (dist < 10000) nearbyCount++ // within 10km
-              })
-
-              let description = "已获取您的精确位置。"
-              if (nearbyCount > 0) {
-                description += ` 附近 10km 内有 ${nearbyCount} 家收藏餐厅。`
-              } else {
-                description += ` 附近暂无收藏餐厅（最近的在 ${(nearestDist / 1000).toFixed(1)}km 外）。`
-              }
-
-              // Always center on user location with appropriate zoom
-              // Zoom 11 is roughly 10km view range
-              setTimeout(() => {
-                 map.setZoomAndCenter(11, result.position)
-              }, 100)
-
-              toast({
-                title: "定位成功",
-                description: description,
-              })
+            let description = "已获取您的精确位置。"
+            if (nearbyCount > 0) {
+              description += ` 附近 10km 内有 ${nearbyCount} 家收藏餐厅。`
             } else {
-               // No restaurants case
-               setTimeout(() => {
-                 map.setZoomAndCenter(11, result.position)
-               }, 100)
-               
-               toast({
-                title: "定位成功",
-                description: "已获取您的精确位置，但当前没有展示的餐厅。",
-              })
+              description += ` 附近暂无收藏餐厅（最近的在 ${(nearestDist / 1000).toFixed(1)}km 外）。`
             }
+
+            // Always center on user location with appropriate zoom
+            // Zoom 11 is roughly 10km view range
+            setTimeout(() => {
+              map.setZoomAndCenter(11, result.position)
+            }, 100)
+
+            toast({
+              title: "定位成功",
+              description: description,
+            })
+          } else {
+            // No restaurants case
+            setTimeout(() => {
+              map.setZoomAndCenter(11, result.position)
+            }, 100)
+
+            toast({
+              title: "定位成功",
+              description: "已获取您的精确位置，但当前没有展示的餐厅。",
+            })
+          }
 
         } else {
-            console.error('Location failed', status, result)
-            
-            let errorMsg = '未知错误'
-            if (result.message) errorMsg = result.message
-            else if (typeof result === 'string') errorMsg = result
+          console.error('Location failed', status, result)
 
-            // 如果是 HTTPS 问题，提示更明确
-            if (typeof window !== 'undefined' && window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-                errorMsg += " (非HTTPS环境无法精确定位)"
-            }
-            
-            toast({
-              variant: "destructive",
-              title: "无法获取精确位置",
-              description: `原因：${errorMsg}。尝试切换到城市定位。`,
-            })
-            
-            // Fallback to City Location immediately on any error
-            console.log('Attempting fallback to CitySearch...')
-            map.plugin("AMap.CitySearch", function () {
-                const citySearch = new AMap.CitySearch()
-                citySearch.getLocalCity(function (status: string, result: any) {
-                  if (status === 'complete' && result.info === 'OK') {
-                    if (result && result.city && result.bounds) {
-                      const citybounds = result.bounds
-                      map.setBounds(citybounds)
-                      console.log('Fallback to city:', result.city)
-                      toast({
-                        title: `已定位到：${result.city}`,
-                        description: "由于精确位置获取失败，仅显示城市范围。",
-                      })
-                    }
-                  } else {
-                      console.error('City fallback failed', result)
-                      toast({
-                        variant: "destructive",
-                        title: "定位完全失败",
-                        description: "无法获取位置信息，请检查网络或权限。",
-                      })
-                  }
+          let errorMsg = '未知错误'
+          if (result.message) errorMsg = result.message
+          else if (typeof result === 'string') errorMsg = result
+
+          // 如果是 HTTPS 问题，提示更明确
+          if (typeof window !== 'undefined' && window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            errorMsg += " (非HTTPS环境无法精确定位)"
+          }
+
+          toast({
+            variant: "destructive",
+            title: "无法获取精确位置",
+            description: `原因：${errorMsg}。尝试切换到城市定位。`,
+          })
+
+          // Fallback to City Location immediately on any error
+          console.log('Attempting fallback to CitySearch...')
+          map.plugin("AMap.CitySearch", function () {
+            const citySearch = new AMap.CitySearch()
+            citySearch.getLocalCity(function (status: string, result: any) {
+              if (status === 'complete' && result.info === 'OK') {
+                if (result && result.city && result.bounds) {
+                  const citybounds = result.bounds
+                  map.setBounds(citybounds)
+                  console.log('Fallback to city:', result.city)
+                  toast({
+                    title: `已定位到：${result.city}`,
+                    description: "由于精确位置获取失败，仅显示城市范围。",
+                  })
+                }
+              } else {
+                console.error('City fallback failed', result)
+                toast({
+                  variant: "destructive",
+                  title: "定位完全失败",
+                  description: "无法获取位置信息，请检查网络或权限。",
                 })
+              }
             })
+          })
         }
       })
     })
@@ -326,14 +327,14 @@ export function MobileMapView({
       }
       markersRef.current = []
     }
-    
+
     // Don't clear user marker here!
 
     const newMarkers: any[] = []
 
     displayedRestaurants.forEach((restaurant) => {
       const emoji = getTagEmoji(restaurant.tags)
-      
+
       // Create custom content marker
       const content = `
         <div class="custom-marker" style="
@@ -362,8 +363,8 @@ export function MobileMapView({
 
       marker.on('click', () => {
         setSelectedRestaurant(restaurant)
-        // Center map on click
-        map.setZoomAndCenter(15, [restaurant.lng, restaurant.lat])
+        // Center map on click (13 is roughly 5km scale in AMap)
+        map.setZoomAndCenter(13, [restaurant.lng, restaurant.lat])
       })
 
       newMarkers.push(marker)
@@ -372,8 +373,11 @@ export function MobileMapView({
     if (newMarkers.length > 0) {
       map.add(newMarkers)
       markersRef.current = newMarkers
-      // Fit view to show all markers
-      map.setFitView(newMarkers, false, [50, 50, 50, 50])
+      // Fit view to show all markers ONLY when restaurants list array actually changes
+      if (prevDisplayedRef.current !== displayedRestaurants) {
+        map.setFitView(newMarkers, false, [50, 50, 50, 50])
+        prevDisplayedRef.current = displayedRestaurants
+      }
     }
 
   }, [displayedRestaurants, selectedRestaurant])
@@ -442,11 +446,11 @@ export function MobileMapView({
           z-index: 1;
         }
       `}</style>
-      
+
       {/* Map Container */}
-      <div 
-        ref={mapContainerRef} 
-        className="absolute inset-0 z-0 bg-gray-200" 
+      <div
+        ref={mapContainerRef}
+        className="absolute inset-0 z-0 bg-gray-200"
         style={{ minHeight: '100%', minWidth: '100%' }}
       />
 
@@ -506,9 +510,8 @@ export function MobileMapView({
                           onSelectList(list.id)
                           setShowListDropdown(false)
                         }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
-                          isActive ? "bg-primary/8" : "active:bg-muted/60"
-                        }`}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${isActive ? "bg-primary/8" : "active:bg-muted/60"
+                          }`}
                       >
                         <span className="text-lg">{"\uD83D\uDCC2"}</span>
                         <div className="flex-1 min-w-0">
@@ -596,11 +599,10 @@ export function MobileMapView({
                     scrollChipToCenter(cat.id)
                   }}
                   style={{ scrollSnapAlign: "center" }}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] whitespace-nowrap shrink-0 transition-all duration-250 border ${
-                    isActive
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] whitespace-nowrap shrink-0 transition-all duration-250 border ${isActive
                       ? "bg-foreground text-background font-semibold shadow-md border-foreground scale-105"
                       : "bg-background/90 text-foreground/70 font-medium shadow-sm border-border/30 active:scale-[0.96]"
-                  }`}
+                    }`}
                 >
                   <span className="text-[15px] leading-none">{cat.emoji}</span>
                   <span>{cat.label}</span>
