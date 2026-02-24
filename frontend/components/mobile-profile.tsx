@@ -42,10 +42,11 @@ export function MobileProfile({
     if (!currentList) return
 
     // 构造分享链接，包含 listId
-    // 假设部署后的域名，或者使用当前 window.location.origin
-    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    // 优先使用环境变量中配置的主域名，如果没有才退回到当前页面域名（防止 Vercel 预览长链接泄漏）
+    const customOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_VERCEL_URL
+    const origin = customOrigin ? (customOrigin.startsWith('http') ? customOrigin : `https://${customOrigin}`) : (typeof window !== 'undefined' ? window.location.origin : '')
     const shareUrl = `${origin}?listId=${currentList.id}&action=join`
-    
+
     try {
       await navigator.clipboard.writeText(`来【饭点】和我一起编辑"${currentList.name}"吧！\n点击链接加入：${shareUrl}`)
       setCopied(true)
@@ -90,7 +91,7 @@ export function MobileProfile({
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold text-lg">{currentList.name}</h3>
                     <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full font-medium">
-                        协作模式
+                      协作模式
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground flex items-center gap-1">
@@ -98,9 +99,9 @@ export function MobileProfile({
                     {currentList.restaurants.length} 家餐厅 · 多人协作中
                   </p>
                 </div>
-                <Button 
-                    className="shrink-0 shadow-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-4"
-                    onClick={handleShare}
+                <Button
+                  className="shrink-0 shadow-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-4"
+                  onClick={handleShare}
                 >
                   {copied ? (
                     <>
@@ -115,7 +116,7 @@ export function MobileProfile({
                   )}
                 </Button>
               </div>
-              
+
               <div className="mt-3 text-xs text-muted-foreground bg-background/50 p-2 rounded-lg border border-border/50">
                 <p>点击“邀请好友”复制链接，发送给朋友即可加入此列表，共同编辑餐厅。</p>
               </div>
@@ -157,19 +158,17 @@ export function MobileProfile({
             {lists.map((list) => (
               <div
                 key={list.id}
-                className={`flex items-center gap-3 p-4 rounded-2xl transition-colors ${
-                  list.id === currentListId
+                className={`flex items-center gap-3 p-4 rounded-2xl transition-colors ${list.id === currentListId
                     ? "bg-primary/10 border-2 border-primary"
                     : "bg-muted/30 border-2 border-transparent"
-                }`}
+                  }`}
               >
                 <button onClick={() => onSelectList(list.id)} className="flex-1 flex items-center gap-3 text-left">
                   <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                      list.id === currentListId
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${list.id === currentListId
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted text-muted-foreground"
-                    }`}
+                      }`}
                   >
                     <FolderOpen className="w-5 h-5" />
                   </div>
