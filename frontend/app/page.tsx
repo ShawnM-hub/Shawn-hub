@@ -57,6 +57,13 @@ export default function HomePage() {
         if (joinListId && action === 'join') {
           try {
             setIsSyncing(true)
+
+            // 如果是一个纯新访客，加入前先为他兜底建一个属于他自己的 "我的收藏"
+            if (storedLists.length === 0) {
+              createList("我的收藏")
+              storedLists = getLists()
+            }
+
             // Fetch the shared list from backend
             const res = await fetch(`${API_URL}/api/lists/${joinListId}`)
             if (res.ok) {
