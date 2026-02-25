@@ -64,8 +64,17 @@ export default function HomePage() {
               storedLists = getLists()
             }
 
-            // Fetch the shared list from backend
-            const res = await fetch(`${API_URL}/api/lists/${joinListId}`)
+            // Generate or get a guest ID to simulate a user
+            const userId = localStorage.getItem("guest_id") || "user_" + Math.random().toString(36).substring(2, 9);
+            localStorage.setItem("guest_id", userId);
+
+            // POST to the join endpoint so it handles upsert appropriately instead of throwing 404
+            const res = await fetch(`${API_URL}/api/lists/${joinListId}/join`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ userId, userName: "神秘饭友" })
+            })
+
             if (res.ok) {
               const sharedList = await res.json()
 
@@ -85,32 +94,14 @@ export default function HomePage() {
               // Clean URL
               window.history.replaceState({}, '', '/')
               alert(`成功加入协作列表：${sharedList.name}`)
-            } else if (res.status === 404) {
-              // 如果因为后端还没来得及同步导致 404，不阻断前端正常创建本地空壳并等候同步兜底
-              const rawId = joinListId
-              const dummyList = {
-                id: rawId,
-                name: "已加入的新列表 (同步中...)",
-                restaurants: [],
-                createdAt: new Date().toISOString(),
-                shareCode: Math.random().toString(36).substring(2, 8).toUpperCase()
-              }
-
-              const existingIndex = storedLists.findIndex(l => l.id === rawId)
-              if (existingIndex < 0) storedLists.push(dummyList)
-
-              saveLists(storedLists)
-              setLists(storedLists)
-              setCurrentListId(rawId)
-              setActiveTab("list")
-              window.history.replaceState({}, '', '/')
-              alert("已成功添加协作用列表，等待远端同步内容...")
             } else {
-              throw new Error('Fetch not ok and not 404')
+              const err = await res.json().catch(() => ({}))
+              console.error("Join list failed", err)
+              alert("加入列表失败，请检查网络或刷新重试")
             }
           } catch (e) {
             console.error("Join list failed", e)
-            alert("加入列表失败，请检查网络或链接是否正确")
+            alert("加入列表发生了网络异常")
           } finally {
             setIsSyncing(false)
           }
