@@ -81,8 +81,13 @@ export default function HomePage() {
             } else if (res.status === 404) {
               // 如果因为后端还没来得及同步导致 404，不阻断前端正常创建本地空壳并等候同步兜底
               const rawId = joinListId
-              const dummyList = createList("已加入的新列表 (同步中...)")
-              dummyList.id = rawId
+              const dummyList = {
+                id: rawId,
+                name: "已加入的新列表 (同步中...)",
+                restaurants: [],
+                createdAt: new Date().toISOString(),
+                shareCode: Math.random().toString(36).substring(2, 8).toUpperCase()
+              }
 
               const existingIndex = storedLists.findIndex(l => l.id === rawId)
               if (existingIndex < 0) storedLists.push(dummyList)
