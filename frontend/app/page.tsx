@@ -78,6 +78,23 @@ export default function HomePage() {
               // Clean URL
               window.history.replaceState({}, '', '/')
               alert(`成功加入协作列表：${sharedList.name}`)
+            } else if (res.status === 404) {
+              // 如果因为后端还没来得及同步导致 404，不阻断前端正常创建本地空壳并等候同步兜底
+              const rawId = joinListId
+              const dummyList = createList("已加入的新列表 (同步中...)")
+              dummyList.id = rawId
+
+              const existingIndex = storedLists.findIndex(l => l.id === rawId)
+              if (existingIndex < 0) storedLists.push(dummyList)
+
+              saveLists(storedLists)
+              setLists(storedLists)
+              setCurrentListId(rawId)
+              setActiveTab("list")
+              window.history.replaceState({}, '', '/')
+              alert("已成功添加协作用列表，等待远端同步内容...")
+            } else {
+              throw new Error('Fetch not ok and not 404')
             }
           } catch (e) {
             console.error("Join list failed", e)
@@ -505,14 +522,14 @@ export default function HomePage() {
             >
               <Map
                 className={`w-6 h-6 transition-all duration-300 ${activeTab === "map"
-                    ? "text-primary stroke-[2.5px] scale-110"
-                    : "text-muted-foreground"
+                  ? "text-primary stroke-[2.5px] scale-110"
+                  : "text-muted-foreground"
                   }`}
               />
               <span
                 className={`text-[10px] mt-1 transition-all duration-300 ${activeTab === "map"
-                    ? "text-primary font-semibold"
-                    : "text-muted-foreground"
+                  ? "text-primary font-semibold"
+                  : "text-muted-foreground"
                   }`}
               >
                 地图
@@ -527,14 +544,14 @@ export default function HomePage() {
             >
               <List
                 className={`w-6 h-6 transition-all duration-300 ${activeTab === "list"
-                    ? "text-primary stroke-[2.5px] scale-110"
-                    : "text-muted-foreground"
+                  ? "text-primary stroke-[2.5px] scale-110"
+                  : "text-muted-foreground"
                   }`}
               />
               <span
                 className={`text-[10px] mt-1 transition-all duration-300 ${activeTab === "list"
-                    ? "text-primary font-semibold"
-                    : "text-muted-foreground"
+                  ? "text-primary font-semibold"
+                  : "text-muted-foreground"
                   }`}
               >
                 列表
@@ -561,8 +578,8 @@ export default function HomePage() {
             >
               <svg
                 className={`w-6 h-6 transition-all duration-300 ${activeTab === "add"
-                    ? "text-primary scale-110"
-                    : "text-muted-foreground"
+                  ? "text-primary scale-110"
+                  : "text-muted-foreground"
                   }`}
                 viewBox="0 0 24 24"
                 fill="none"
@@ -575,8 +592,8 @@ export default function HomePage() {
               </svg>
               <span
                 className={`text-[10px] mt-1 transition-all duration-300 ${activeTab === "add"
-                    ? "text-primary font-semibold"
-                    : "text-muted-foreground"
+                  ? "text-primary font-semibold"
+                  : "text-muted-foreground"
                   }`}
               >
                 添加
@@ -591,14 +608,14 @@ export default function HomePage() {
             >
               <User
                 className={`w-6 h-6 transition-all duration-300 ${activeTab === "profile"
-                    ? "text-primary stroke-[2.5px] scale-110"
-                    : "text-muted-foreground"
+                  ? "text-primary stroke-[2.5px] scale-110"
+                  : "text-muted-foreground"
                   }`}
               />
               <span
                 className={`text-[10px] mt-1 transition-all duration-300 ${activeTab === "profile"
-                    ? "text-primary font-semibold"
-                    : "text-muted-foreground"
+                  ? "text-primary font-semibold"
+                  : "text-muted-foreground"
                   }`}
               >
                 我的
